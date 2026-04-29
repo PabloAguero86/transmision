@@ -44,10 +44,13 @@ export function normalize(raw: GpsRawRow): GpsPosition {
   // Normalize direction: 0 = IDA, 1 = VUELTA
   const direction: 'IDA' | 'VUELTA' = raw.direction_id === 0 ? 'IDA' : 'VUELTA';
 
-  // Apply speed unit conversion if configured for knots
+  // Apply speed unit conversion: Traccar stores speed in knots by default
+  // Convert to km/h if configured (knots * 1.852 = km/h)
   let speed = Number(raw.speed);
   if (config.gps.speedUnit === 'knots') {
-    speed = speed * 1.852;
+    speed = Math.round(speed * 1.852 * 10) / 10; // Convert and round to 1 decimal
+  } else {
+    speed = Math.round(speed * 10) / 10; // Round to 1 decimal
   }
 
   const gpsTimestamp = Number(raw.ts);
@@ -59,8 +62,8 @@ export function normalize(raw: GpsRawRow): GpsPosition {
   return {
     deviceImei: String(raw.imei).trim(),
     plate: String(raw.license_plate).trim(),
-    latitude: Number(raw.latitude),
-    longitude: Number(raw.longitude),
+    latitude: Math.round(Number(raw.latitude) * 1000000) / 1000000, // 6 decimals
+    longitude: Math.round(Number(raw.longitude) * 1000000) / 1000000, // 6 decimals
     speed: speed,
     gpsTimestamp: gpsTimestamp,
     routeCode: String(raw.route_id || '').trim(),
