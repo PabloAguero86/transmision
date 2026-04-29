@@ -123,8 +123,9 @@ export class AtuWsClient {
 
   /**
    * Send a payload and wait for response
+   * @returns The ATU response for this payload
    */
-  async send(payload: AtuPayload): Promise<void> {
+  async send(payload: AtuPayload): Promise<AtuResponse> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket not connected');
     }
@@ -154,7 +155,9 @@ export class AtuWsClient {
           setTimeout(() => {
             this.options.onMessage = originalOnMessage;
           }, 0);
-          resolve();
+          // Also notify the external handler (e.g. TransmissionService)
+          originalOnMessage(response);
+          resolve(response);
         } else {
           // Pass through to original handler
           originalOnMessage(response);

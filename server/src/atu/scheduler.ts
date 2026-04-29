@@ -370,15 +370,15 @@ export class TransmissionScheduler {
           console.error(`[Scheduler] Failed to save pending transmission: ${err}`);
         }
 
-        await wsClient.send(payload);
+        const atuResponse = await wsClient.send(payload);
         markSent(imei, position);
 
-        console.log(`[Scheduler] ✅ Sent position for ${imei}, identifier=${payload.identifier}`);
+        console.log(`[Scheduler] ✅ Sent position for ${imei}, identifier=${payload.identifier}, atu_code=${atuResponse.codigo}`);
 
-        // Update with accepted status (response handler will update properly)
+        // Update with actual ATU response
         if (dbId !== undefined) {
           const latency = Date.now() - startTime;
-          await transmissionService.updateTransmissionStatus(dbId, 'accepted_by_atu', undefined, latency);
+          await transmissionService.updateTransmissionStatus(dbId, 'accepted_by_atu', atuResponse, latency);
         }
 
         // Record success for 20-second rule
