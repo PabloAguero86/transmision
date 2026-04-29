@@ -1,0 +1,8 @@
+.env
+server/dist
+server/coverage
+server/node_modules
+panel/dist
+panel/node_modules
+.omx
+*.log
