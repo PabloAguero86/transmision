@@ -70,7 +70,7 @@ const config: AtuConfig = {
   },
   gps: {
     sourceType: (process.env.GPS_SOURCE_TYPE as 'database') || 'database',
-    pollIntervalMs: parseIntOrDefault(process.env.GPS_SOURCE_POLL_INTERVAL_MS, 5000),
+    pollIntervalMs: parseIntOrDefault(process.env.GPS_SOURCE_POLL_INTERVAL_MS, 10000),
     speedUnit: (process.env.GPS_SPEED_UNIT as 'km/h' | 'knots') || 'km/h',
   },
   mysql: {
