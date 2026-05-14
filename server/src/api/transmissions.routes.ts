@@ -8,6 +8,7 @@ import { TransmissionRepository, TransmissionRecord, TransmissionStatus } from '
 
 interface PaginationQuery {
   status?: TransmissionStatus;
+  imei?: string;
   limit?: string;
   offset?: string;
 }
@@ -24,8 +25,9 @@ export function createTransmissionRoutes(repository: TransmissionRepository): Ro
       const limit = parseInt(query.limit ?? '50', 10);
       const offset = parseInt(query.offset ?? '0', 10);
       const status = query.status as TransmissionStatus | undefined;
+      const imei = query.imei || undefined;
 
-      const result = await repository.getPaginated({ status, limit, offset });
+      const result = await repository.getPaginated({ status, imei, limit, offset });
 
       res.json({
         records: result.records,
@@ -102,6 +104,19 @@ export function createTransmissionRoutes(repository: TransmissionRepository): Ro
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: `Failed to get error transmissions: ${message}` });
+    }
+  });
+
+  /**
+   * GET /atu/transmissions/vehicles — List of distinct vehicles with transmissions
+   */
+  router.get('/vehicles', async (_req: Request, res: Response) => {
+    try {
+      const vehicles = await repository.getDistinctVehicles();
+      res.json({ vehicles, count: vehicles.length });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ error: `Failed to get vehicles: ${message}` });
     }
   });
 

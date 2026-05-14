@@ -230,32 +230,33 @@ export class TransmissionRepository {
    */
   async getPaginated(options: {
     status?: TransmissionStatus;
+    imei?: string;
     limit: number;
     offset: number;
   }): Promise<{ records: TransmissionRecord[]; total: number }> {
-    const { status, limit, offset } = options;
+    const { status, imei, limit, offset } = options;
 
-    let countSql = 'SELECT COUNT(*) as total FROM atu_transmissions';
-    let dataSql = 'SELECT * FROM atu_transmissions';
+    const conditions: string[] = [];
     const params: any[] = [];
 
     if (status) {
-      countSql += ' WHERE status = ?';
-      dataSql += ' WHERE status = ?';
+      conditions.push('status = ?');
       params.push(status);
     }
+    if (imei) {
+      conditions.push('imei = ?');
+      params.push(imei);
+    }
 
-    dataSql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+    const countSql = `SELECT COUNT(*) as total FROM atu_transmissions${whereClause}`;
+    const dataSql = `SELECT * FROM atu_transmissions${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
 
     try {
-      // Get total count
-      const [countRows] = await this.pool.query(
-        status ? 'SELECT COUNT(*) as total FROM atu_transmissions WHERE status = ?' : countSql,
-        status ? [status] : []
-      );
+      const [countRows] = await this.pool.query(countSql, params);
       const total = (countRows as any)[0]?.total ?? 0;
 
-      // Get paginated data
       const [rows] = await this.pool.query(dataSql, [...params, limit, offset]);
       return {
         records: rows as unknown as TransmissionRecord[],
@@ -325,6 +326,30 @@ export class TransmissionRepository {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to get vehicles with recent transmission: ${message}`);
+    }
+  }
+
+  /**
+   * Get distinct vehicles (IMEI + plate) from transmissions for filter dropdown
+   */
+  async getDistinctVehicles(): Promise<Array<{ imei: string; plate: string }>> {
+    const sql = `
+      SELECT imei, MAX(license_plate) as plate
+      FROM atu_transmissions
+      WHERE status = 'accepted_by_atu'
+      GROUP BY imei
+      ORDER BY plate ASC
+    `;
+
+    try {
+      const [rows] = await this.pool.query(sql);
+      return (rows as any[]).map((r: any) => ({
+        imei: r.imei,
+        plate: r.plate,
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to get distinct vehicles: ${message}`);
     }
   }
 

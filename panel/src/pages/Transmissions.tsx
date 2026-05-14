@@ -21,9 +21,20 @@ function Transmissions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [imeiFilter, setImeiFilter] = useState<string>('');
+  const [vehicles, setVehicles] = useState<Array<{ imei: string; plate: string }>>([]);
   const [selectedRecord, setSelectedRecord] = useState<TransmissionRecord | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 50;
+
+  const fetchVehicles = async () => {
+    try {
+      const result = await api.getVehicles();
+      setVehicles(result.vehicles);
+    } catch {
+      // Silencioso — el dropdown simplemente no se llena
+    }
+  };
 
   const fetchTransmissions = async () => {
     try {
@@ -42,6 +53,7 @@ function Transmissions() {
 
       const result = await api.getTransmissions({
         status,
+        imei: imeiFilter || undefined,
         limit: pageSize,
         offset: currentPage * pageSize,
       });
@@ -55,9 +67,13 @@ function Transmissions() {
   };
 
   useEffect(() => {
+    fetchVehicles();
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
     fetchTransmissions();
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, imeiFilter, currentPage]);
 
   const formatTimestamp = (ts: string | null): string => {
     if (!ts) return '—';
@@ -104,6 +120,31 @@ function Transmissions() {
       websocket_error: 'WS ERROR',
     };
     return labels[status] || status.toUpperCase();
+  };
+
+  const downloadAllPayloads = () => {
+    if (!data?.records) return;
+
+    const payloads = data.records
+      .filter((r) => r.payload_json || r.payload)
+      .map((r) => {
+        const raw = r.payload_json || r.payload || '';
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return raw;
+        }
+      });
+
+    const blob = new Blob([JSON.stringify(payloads, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `atu-payloads-${imeiFilter || 'todos'}-${new Date().toISOString().slice(0, 19)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const exportToCSV = () => {
@@ -176,10 +217,34 @@ function Transmissions() {
           </select>
         </div>
 
+        <div className="filter-group">
+          <span className="filter-label">Vehículo:</span>
+          <select
+            className="filter-select"
+            value={imeiFilter}
+            onChange={(e) => {
+              setImeiFilter(e.target.value);
+              setCurrentPage(0);
+            }}
+            style={{ minWidth: '180px' }}
+          >
+            <option value="">Todos</option>
+            {vehicles.map((v) => (
+              <option key={v.imei} value={v.imei}>
+                {v.plate} ({v.imei})
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div style={{ flex: 1 }} />
 
+        <button className="export-btn" onClick={downloadAllPayloads} style={{ marginRight: '8px' }}>
+          📥 Descargar JSONs
+        </button>
+
         <button className="export-btn" onClick={exportToCSV}>
-          📥 Exportar CSV
+          📊 Exportar CSV
         </button>
       </div>
 

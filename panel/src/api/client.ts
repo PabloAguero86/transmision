@@ -161,10 +161,11 @@ export const api = {
       '/atu/transmissions/errors'
     ),
 
-  // GET /atu/transmissions?status=...&limit=50&offset=0
-  getTransmissions: (options: { status?: string; limit?: number; offset?: number } = {}) => {
+  // GET /atu/transmissions?status=...&imei=...&limit=50&offset=0
+  getTransmissions: (options: { status?: string; imei?: string; limit?: number; offset?: number } = {}) => {
     const params = new URLSearchParams();
     if (options.status) params.set('status', options.status);
+    if (options.imei) params.set('imei', options.imei);
     if (options.limit) params.set('limit', String(options.limit));
     if (options.offset) params.set('offset', String(options.offset));
     const query = params.toString();
@@ -251,6 +252,12 @@ export const api = {
       errors: Array<{ field: string; message: string }>;
     }>;
   }>('/debug/payloads-all'),
+
+  // GET /atu/transmissions/vehicles
+  getVehicles: () => get<{
+    vehicles: Array<{ imei: string; plate: string }>;
+    count: number;
+  }>('/atu/transmissions/vehicles'),
 };
 
 export type {
