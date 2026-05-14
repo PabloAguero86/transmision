@@ -115,18 +115,26 @@ function getAuthHeaders(): Record<string, string> {
 
 async function get<T>(path: string): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: { ...getAuthHeaders() },
-    signal: controller.signal,
-  });
-  clearTimeout(timeoutId);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      headers: { ...getAuthHeaders() },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
-  if (!response.ok) {
-    throw new Error(`API error ${response.status}: ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`API error ${response.status}: ${response.statusText}`);
+    }
+    return response.json();
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Timeout — el servidor tardó más de 30s en responder');
+    }
+    throw err;
   }
-  return response.json();
 }
 
 async function post<T>(path: string, body?: object): Promise<T> {
