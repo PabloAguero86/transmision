@@ -55,9 +55,9 @@ interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
   components: {
-    gpsSource: { status: string; message?: string; lastCheck?: string };
-    atuWebsocket: { status: string; message?: string; lastCheck?: string };
-    database: { status: string; message?: string; lastCheck?: string };
+    gpsSource: { status: string; message?: string; lastCheck?: string; lastError?: string };
+    atuWebsocket: { status: string; message?: string; lastCheck?: string; lastError?: string };
+    database: { status: string; message?: string; lastCheck?: string; lastError?: string };
   };
 }
 
@@ -213,7 +213,7 @@ export const api = {
 
   // GET /health/atu-websocket
   getAtuWebsocketHealth: () =>
-    get<{ status: string; message?: string; lastCheck?: string }>(
+    get<{ status: string; message?: string; lastCheck?: string; lastError?: string }>(
       '/health/atu-websocket'
     ),
 
