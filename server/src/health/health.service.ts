@@ -88,27 +88,33 @@ export class HealthService {
    * Check ATU WebSocket client status
    */
   checkAtuWebsocket(): ComponentHealth {
-    const isConnected = this.wsClient.isConnected();
+    const info = this.wsClient.getDiagnostics();
 
-    // Get connection info from wsClient internals if available
-    let lastConnectionTime: string | undefined;
-    let lastError: string | undefined;
-
-    // Check the ws-client to see if we can expose connection state
-    // The AtuWsClient stores state internally, we query it
-    if (isConnected) {
+    if (info.isConnected) {
       return {
         status: 'up',
-        message: 'WebSocket connected to ATU',
-        lastCheck: new Date().toISOString(),
-      };
-    } else {
-      return {
-        status: 'down',
-        message: 'WebSocket disconnected from ATU',
+        message: 'WebSocket conectado a ATU',
         lastCheck: new Date().toISOString(),
       };
     }
+
+    const parts: string[] = ['WebSocket desconectado'];
+    if (info.reconnectAttempts > 0) parts.push(`(${info.reconnectAttempts} reintentos)`);
+    if (info.lastCloseCode !== null) parts.push(`código de cierre: ${info.lastCloseCode}`);
+    if (info.lastError) parts.push(`error: ${info.lastError}`);
+
+    return {
+      status: 'down',
+      message: parts.join(' — '),
+      lastCheck: new Date().toISOString(),
+      lastError: [
+        `Endpoint: ${info.wsUrl}`,
+        `Estado WS: ${['CONECTANDO', 'ABIERTO', 'CERRANDO', 'CERRADO'][info.wsReadyState] ?? 'N/A'}`,
+        `Reintentos: ${info.reconnectAttempts}`,
+        info.lastCloseCode !== null ? `Close code: ${info.lastCloseCode} (${info.lastCloseReason || 'sin razón'})` : null,
+        info.lastError ? `Último error: ${info.lastError}` : null,
+      ].filter(Boolean).join(' | '),
+    };
   }
 
   /**

@@ -9,6 +9,8 @@ import { TransmissionRepository, TransmissionRecord, TransmissionStatus } from '
 interface PaginationQuery {
   status?: TransmissionStatus;
   imei?: string;
+  dateFrom?: string;
+  dateTo?: string;
   limit?: string;
   offset?: string;
 }
@@ -26,8 +28,10 @@ export function createTransmissionRoutes(repository: TransmissionRepository): Ro
       const offset = parseInt(query.offset ?? '0', 10);
       const status = query.status as TransmissionStatus | undefined;
       const imei = query.imei || undefined;
+      const dateFrom = query.dateFrom || undefined;
+      const dateTo = query.dateTo || undefined;
 
-      const result = await repository.getPaginated({ status, imei, limit, offset });
+      const result = await repository.getPaginated({ status, imei, dateFrom, dateTo, limit, offset });
 
       res.json({
         records: result.records,

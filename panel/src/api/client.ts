@@ -169,11 +169,13 @@ export const api = {
       '/atu/transmissions/errors'
     ),
 
-  // GET /atu/transmissions?status=...&imei=...&limit=50&offset=0
-  getTransmissions: (options: { status?: string; imei?: string; limit?: number; offset?: number } = {}) => {
+  // GET /atu/transmissions?status=...&imei=...&dateFrom=...&dateTo=...&limit=50&offset=0
+  getTransmissions: (options: { status?: string; imei?: string; dateFrom?: string; dateTo?: string; limit?: number; offset?: number } = {}) => {
     const params = new URLSearchParams();
     if (options.status) params.set('status', options.status);
     if (options.imei) params.set('imei', options.imei);
+    if (options.dateFrom) params.set('dateFrom', options.dateFrom);
+    if (options.dateTo) params.set('dateTo', options.dateTo);
     if (options.limit) params.set('limit', String(options.limit));
     if (options.offset) params.set('offset', String(options.offset));
     const query = params.toString();

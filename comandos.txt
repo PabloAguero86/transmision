@@ -1,0 +1,19 @@
+# Diagnóstico WebSocket ATU
+
+URL base: ws://devrecepcion.atu.gob.pe:5000/ws?token=<token>
+
+## 1. Prueba de puerto TCP (mínimo, siempre funciona)
+timeout 5 bash -c "echo > /dev/tcp/devrecepcion.atu.gob.pe/5000" && echo "PUERTO ABIERTO" || echo "PUERTO CERRADO"
+
+## 2. Con Python3 + websockets (alternativa recomendada si curl no soporta ws)
+# Instalar si no existe: pip install websockets
+python3 -c "
+import asyncio, websockets
+async def test():
+    async with websockets.connect('ws://devrecepcion.atu.gob.pe:5000/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJydWMiOiIyMDI2MTYwODU1NCIsIm5vbWJyZUVtcHJlc2EiOiJFTVBSRVNBIERFIFRSQU5TUE9SVEVTIFNVUiBFWFBSRVNTIFMuQS4iLCJkaWFzVmlnZW5jaWEiOiI2MCIsImV4cCI6MTc4MjE1NzE0MiwiaXNzIjoiaHR0cHM6Ly9zb2x1Y2lvbmVzLmF0dS5nb2IucGUiLCJhdWQiOiJodHRwczovL3NvbHVjaW9uZXMuYXR1LmdvYi5wZSJ9.I42QDWqn4tluqazfgbOGz27dpFZxUgT1tci_aSmrnu0', timeout=5) as ws:
+        print('CONECTADO')
+asyncio.run(test())
+"
+
+## 3. Con wscat (npm install -g wscat)
+wscat -c "ws://devrecepcion.atu.gob.pe:5000/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJydWMiOiIyMDI2MTYwODU1NCIsIm5vbWJyZUVtcHJlc2EiOiJFTVBSRVNBIERFIFRSQU5TUE9SVEVTIFNVUiBFWFBSRVNTIFMuQS4iLCJkaWFzVmlnZW5jaWEiOiI2MCIsImV4cCI6MTc4MjE1NzE0MiwiaXNzIjoiaHR0cHM6Ly9zb2x1Y2lvbmVzLmF0dS5nb2IucGUiLCJhdWQiOiJodHRwczovL3NvbHVjaW9uZXMuYXR1LmdvYi5wZSJ9.I42QDWqn4tluqazfgbOGz27dpFZxUgT1tci_aSmrnu0" --connect-timeout 5

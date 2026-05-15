@@ -37,6 +37,9 @@ export class AtuWsClient {
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private pendingMessages: Map<string, AtuPayload> = new Map();
   private _isConnected = false;
+  private lastCloseCode: number | null = null;
+  private lastCloseReason: string | null = null;
+  private lastError: string | null = null;
 
   constructor(options: AtuWsClientOptions) {
     this.wsUrl = options.wsUrl;
@@ -102,6 +105,8 @@ export class AtuWsClient {
         });
 
         this.ws.on('close', (code: number, reason: Buffer) => {
+          this.lastCloseCode = code;
+          this.lastCloseReason = reason.toString();
           console.log(`[ATU WS] Connection closed: code=${code}, reason=${reason.toString()}`);
           this._isConnected = false;
           this.stopHeartbeat();
@@ -110,6 +115,7 @@ export class AtuWsClient {
         });
 
         this.ws.on('error', (error: Error) => {
+          this.lastError = error.message;
           console.error(`[ATU WS] Error: ${error.message}`);
           // Don't reject on error - let reconnect handle it
         });
@@ -199,6 +205,18 @@ export class AtuWsClient {
    */
   isConnected(): boolean {
     return this._isConnected;
+  }
+
+  getDiagnostics() {
+    return {
+      isConnected: this._isConnected,
+      wsUrl: this.wsUrl.replace(/token=[^&]*/, 'token=****'),
+      reconnectAttempts: this.reconnectAttempts,
+      lastCloseCode: this.lastCloseCode,
+      lastCloseReason: this.lastCloseReason,
+      lastError: this.lastError,
+      wsReadyState: this.ws?.readyState ?? -1,
+    };
   }
 
   /**

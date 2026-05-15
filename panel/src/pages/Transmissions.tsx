@@ -25,6 +25,9 @@ function Transmissions() {
   const [vehicles, setVehicles] = useState<Array<{ imei: string; plate: string }>>([]);
   const [selectedRecord, setSelectedRecord] = useState<TransmissionRecord | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [pageInput, setPageInput] = useState('');
   const pageSize = 50;
 
   const fetchVehicles = async () => {
@@ -54,6 +57,8 @@ function Transmissions() {
       const result = await api.getTransmissions({
         status,
         imei: imeiFilter || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
         limit: pageSize,
         offset: currentPage * pageSize,
       });
@@ -73,7 +78,7 @@ function Transmissions() {
   useEffect(() => {
     setLoading(true);
     fetchTransmissions();
-  }, [statusFilter, imeiFilter, currentPage]);
+  }, [statusFilter, imeiFilter, dateFrom, dateTo, currentPage]);
 
   const formatTimestamp = (ts: string | null): string => {
     if (!ts) return '—';
@@ -109,18 +114,41 @@ function Transmissions() {
     return 'pending';
   };
 
-  const getStatusLabel = (status: string): string => {
-    const labels: Record<string, string> = {
-      accepted_by_atu: 'ACEPTADO',
-      rejected_by_atu: 'RECHAZADO',
-      expired: 'EXPIRADO',
-      validation_failed: 'VALIDACIÓN',
-      pending: 'PENDIENTE',
-      token_error: 'TOKEN',
-      websocket_error: 'WS ERROR',
-    };
-    return labels[status] || status.toUpperCase();
+  const STATUS_LABELS: Record<string, string> = {
+    accepted_by_atu: 'ACEPTADO',
+    rejected_by_atu: 'RECHAZADO',
+    expired: 'EXPIRADO',
+    validation_failed: 'VALIDACIÓN',
+    pending: 'PENDIENTE',
+    pending_send: 'PENDIENTE_ENVÍO',
+    normalized: 'NORMALIZADO',
+    sent: 'ENVIADO',
+    skipped: 'SALTADO',
+    retry_pending: 'REINTENTO',
+    token_error: 'TOKEN',
+    websocket_error: 'WS ERROR',
   };
+
+  const STATUS_TOOLTIPS: Record<string, string> = {
+    accepted_by_atu: 'Transmisión aceptada por ATU correctamente',
+    rejected_by_atu: 'ATU rechazó la transmisión — revisar código de respuesta',
+    validation_failed: 'No pasó validación ATU — campos faltantes, formato inválido o datos incorrectos',
+    expired: 'La transmisión expiró antes de ser enviada',
+    pending: 'Transmisión esperando ser procesada',
+    pending_send: 'Transmisión lista para enviarse a ATU',
+    normalized: 'Payload normalizado y listo para validación',
+    sent: 'Transmisión enviada a ATU, esperando respuesta',
+    skipped: 'Transmisión omitida por configuración',
+    retry_pending: 'Transmisión programada para reintento',
+    token_error: 'Error de autenticación — el token no es válido o expiró',
+    websocket_error: 'Error de conexión WebSocket con ATU',
+  };
+
+  const getStatusLabel = (status: string): string =>
+    STATUS_LABELS[status] || status.toUpperCase();
+
+  const getStatusTooltip = (status: string): string | undefined =>
+    STATUS_TOOLTIPS[status];
 
   const downloadAllPayloads = () => {
     if (!data?.records) return;
@@ -150,7 +178,7 @@ function Transmissions() {
   const exportToCSV = () => {
     if (!data?.records) return;
 
-    const headers = ['ID', 'Placa', 'IMEI', 'Ruta', 'Status', 'Código ATU', 'Latencia (ms)', 'Timestamp', 'Identifier'];
+    const headers = ['ID', 'Placa', 'IMEI', 'Ruta', 'Status', 'Código ATU', 'Latencia (ms)', 'GPS Timestamp', 'Inicio Viaje', 'Timestamp', 'Identifier'];
     const rows = data.records.map((r) => [
       r.id,
       r.license_plate,
@@ -159,6 +187,8 @@ function Transmissions() {
       r.status,
       r.atu_response_code || '',
       r.latency_ms !== null ? r.latency_ms : '',
+      r.ts ?? '',
+      r.tsinitialtrip ?? '',
       r.created_at,
       r.identifier || '',
     ]);
@@ -237,6 +267,31 @@ function Transmissions() {
           </select>
         </div>
 
+        <div className="filter-group">
+          <span className="filter-label">Desde:</span>
+          <input
+            type="date"
+            className="filter-input"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setCurrentPage(0);
+            }}
+          />
+        </div>
+        <div className="filter-group">
+          <span className="filter-label">Hasta:</span>
+          <input
+            type="date"
+            className="filter-input"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setCurrentPage(0);
+            }}
+          />
+        </div>
+
         <div style={{ flex: 1 }} />
 
         <button className="export-btn" onClick={downloadAllPayloads} style={{ marginRight: '8px' }}>
@@ -286,6 +341,8 @@ function Transmissions() {
                   <th>Estado</th>
                   <th>Código</th>
                   <th>Latencia</th>
+                  <th>GPS Timestamp</th>
+                  <th>Inicio Viaje</th>
                   <th>Timestamp</th>
                   <th></th>
                 </tr>
@@ -302,7 +359,10 @@ function Transmissions() {
                     <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{record.imei}</td>
                     <td>{record.route_id}</td>
                     <td>
-                      <span className={`status-pill ${getStatusClass(record.status)}`}>
+                      <span
+                        className={`status-pill ${getStatusClass(record.status)}`}
+                        title={getStatusTooltip(record.status)}
+                      >
                         {getStatusLabel(record.status)}
                       </span>
                     </td>
@@ -312,6 +372,8 @@ function Transmissions() {
                     <td>
                       {record.latency_ms !== null ? `${record.latency_ms}ms` : '—'}
                     </td>
+                    <td className="timestamp">{formatUnixMs(record.ts)}</td>
+                    <td className="timestamp">{formatUnixMs(record.tsinitialtrip)}</td>
                     <td className="timestamp">{formatTimestamp(record.created_at)}</td>
                     <td>
                       <button
@@ -341,13 +403,49 @@ function Transmissions() {
             <div className="pagination-controls">
               <button
                 className="btn btn-sm btn-secondary"
+                onClick={() => setCurrentPage(0)}
+                disabled={currentPage === 0}
+              >
+                ⟪ Primera
+              </button>
+              <button
+                className="btn btn-sm btn-secondary"
                 onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
                 disabled={currentPage === 0}
               >
                 ← Anterior
               </button>
-              <span style={{ padding: '6px 12px', color: 'var(--text-secondary)' }}>
-                Página {currentPage + 1} de {totalPages}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 8px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Ir a</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const page = parseInt(pageInput, 10);
+                      if (page >= 1 && page <= totalPages) {
+                        setCurrentPage(page - 1);
+                        setPageInput('');
+                      }
+                    }
+                  }}
+                  style={{
+                    width: '60px',
+                    padding: '4px 8px',
+                    background: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.875rem',
+                    textAlign: 'center',
+                  }}
+                />
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  de {totalPages}
+                </span>
               </span>
               <button
                 className="btn btn-sm btn-secondary"
@@ -355,6 +453,13 @@ function Transmissions() {
                 disabled={!data.hasMore}
               >
                 Siguiente →
+              </button>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => setCurrentPage(totalPages - 1)}
+                disabled={currentPage === totalPages - 1 || totalPages === 0}
+              >
+                Última ⟫
               </button>
             </div>
           </div>
@@ -390,7 +495,10 @@ function Transmissions() {
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Estado</span>
-                  <span className={`status-pill ${getStatusClass(selectedRecord.status)}`}>
+                  <span
+                    className={`status-pill ${getStatusClass(selectedRecord.status)}`}
+                    title={getStatusTooltip(selectedRecord.status)}
+                  >
                     {getStatusLabel(selectedRecord.status)}
                   </span>
                 </div>

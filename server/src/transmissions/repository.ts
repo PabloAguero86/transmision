@@ -231,10 +231,12 @@ export class TransmissionRepository {
   async getPaginated(options: {
     status?: TransmissionStatus;
     imei?: string;
+    dateFrom?: string;
+    dateTo?: string;
     limit: number;
     offset: number;
   }): Promise<{ records: TransmissionRecord[]; total: number }> {
-    const { status, imei, limit, offset } = options;
+    const { status, imei, dateFrom, dateTo, limit, offset } = options;
 
     const conditions: string[] = [];
     const params: any[] = [];
@@ -246,6 +248,14 @@ export class TransmissionRepository {
     if (imei) {
       conditions.push('imei = ?');
       params.push(imei);
+    }
+    if (dateFrom) {
+      conditions.push('created_at >= ?');
+      params.push(dateFrom);
+    }
+    if (dateTo) {
+      conditions.push('created_at <= ?');
+      params.push(dateTo + ' 23:59:59');
     }
 
     const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';

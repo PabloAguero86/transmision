@@ -13,6 +13,7 @@ function Config() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [detailComponent, setDetailComponent] = useState<string | null>(null);
 
   const fetchConfigAndHealth = async () => {
     try {
@@ -297,6 +298,28 @@ function Config() {
                 {health.components.gpsSource.message.split(',')[0]}
               </div>
             )}
+            <button
+              className="btn btn-sm btn-secondary"
+              style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '3px 10px' }}
+              onClick={() => setDetailComponent(detailComponent === 'gps' ? null : 'gps')}
+            >
+              {detailComponent === 'gps' ? 'Ocultar detalles' : 'Ver detalles'}
+            </button>
+            {detailComponent === 'gps' && (
+              <div style={{
+                marginTop: '8px', padding: '10px 12px', background: 'var(--bg-primary)',
+                borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
+                fontSize: '0.8rem', lineHeight: '1.6', width: '100%',
+              }}>
+                <div><strong>Status real:</strong> {health?.components?.gpsSource?.status || 'unknown'}</div>
+                {health?.components?.gpsSource?.message && <div><strong>Mensaje completo:</strong> {health.components.gpsSource.message}</div>}
+                {health?.components?.gpsSource?.lastCheck && <div><strong>Última verificación:</strong> {new Date(health.components.gpsSource.lastCheck).toLocaleString('es-ES')}</div>}
+                {health?.components?.gpsSource?.lastError && <div><strong>Último error:</strong> <span style={{ color: 'var(--accent-red)' }}>{health.components.gpsSource.lastError}</span></div>}
+                {!health?.components?.gpsSource?.message && !health?.components?.gpsSource?.lastError && (
+                  <div style={{ color: 'var(--text-muted)' }}>Sin información adicional disponible</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="health-item">
@@ -309,6 +332,28 @@ function Config() {
                 {health.components.atuWebsocket.message.split(',')[0]}
               </div>
             )}
+            <button
+              className="btn btn-sm btn-secondary"
+              style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '3px 10px' }}
+              onClick={() => setDetailComponent(detailComponent === 'websocket' ? null : 'websocket')}
+            >
+              {detailComponent === 'websocket' ? 'Ocultar detalles' : 'Ver detalles'}
+            </button>
+            {detailComponent === 'websocket' && (
+              <div style={{
+                marginTop: '8px', padding: '10px 12px', background: 'var(--bg-primary)',
+                borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
+                fontSize: '0.8rem', lineHeight: '1.6', width: '100%',
+              }}>
+                <div><strong>Status real:</strong> {health?.components?.atuWebsocket?.status || 'unknown'}</div>
+                {health?.components?.atuWebsocket?.message && <div><strong>Mensaje completo:</strong> {health.components.atuWebsocket.message}</div>}
+                {health?.components?.atuWebsocket?.lastCheck && <div><strong>Última verificación:</strong> {new Date(health.components.atuWebsocket.lastCheck).toLocaleString('es-ES')}</div>}
+                {health?.components?.atuWebsocket?.lastError && <div><strong>Último error:</strong> <span style={{ color: 'var(--accent-red)' }}>{health.components.atuWebsocket.lastError}</span></div>}
+                {!health?.components?.atuWebsocket?.message && !health?.components?.atuWebsocket?.lastError && (
+                  <div style={{ color: 'var(--text-muted)' }}>Sin información adicional disponible</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="health-item">
@@ -319,6 +364,28 @@ function Config() {
             {health?.components?.database?.message && (
               <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                 {health.components.database.message.split(',')[0]}
+              </div>
+            )}
+            <button
+              className="btn btn-sm btn-secondary"
+              style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '3px 10px' }}
+              onClick={() => setDetailComponent(detailComponent === 'database' ? null : 'database')}
+            >
+              {detailComponent === 'database' ? 'Ocultar detalles' : 'Ver detalles'}
+            </button>
+            {detailComponent === 'database' && (
+              <div style={{
+                marginTop: '8px', padding: '10px 12px', background: 'var(--bg-primary)',
+                borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
+                fontSize: '0.8rem', lineHeight: '1.6', width: '100%',
+              }}>
+                <div><strong>Status real:</strong> {health?.components?.database?.status || 'unknown'}</div>
+                {health?.components?.database?.message && <div><strong>Mensaje completo:</strong> {health.components.database.message}</div>}
+                {health?.components?.database?.lastCheck && <div><strong>Última verificación:</strong> {new Date(health.components.database.lastCheck).toLocaleString('es-ES')}</div>}
+                {health?.components?.database?.lastError && <div><strong>Último error:</strong> <span style={{ color: 'var(--accent-red)' }}>{health.components.database.lastError}</span></div>}
+                {!health?.components?.database?.message && !health?.components?.database?.lastError && (
+                  <div style={{ color: 'var(--text-muted)' }}>Sin información adicional disponible</div>
+                )}
               </div>
             )}
           </div>
