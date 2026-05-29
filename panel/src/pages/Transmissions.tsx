@@ -178,7 +178,7 @@ function Transmissions() {
   const exportToCSV = () => {
     if (!data?.records) return;
 
-    const headers = ['ID', 'Placa', 'IMEI', 'Ruta', 'Status', 'Código ATU', 'Latencia (ms)', 'GPS Timestamp', 'Inicio Viaje', 'Timestamp', 'Identifier'];
+    const headers = ['ID', 'Placa', 'IMEI', 'Ruta', 'Status', 'Código ATU', 'Detalle ATU', 'Latencia (ms)', 'GPS Timestamp', 'Inicio Viaje', 'Timestamp', 'Identifier'];
     const rows = data.records.map((r) => [
       r.id,
       r.license_plate,
@@ -186,6 +186,7 @@ function Transmissions() {
       r.route_id,
       r.status,
       r.atu_response_code || '',
+      r.atu_response_message || '',
       r.latency_ms !== null ? r.latency_ms : '',
       r.ts ?? '',
       r.tsinitialtrip ?? '',
@@ -340,6 +341,7 @@ function Transmissions() {
                   <th>Ruta</th>
                   <th>Estado</th>
                   <th>Código</th>
+                  <th>Detalle ATU</th>
                   <th>Latencia</th>
                   <th>GPS Timestamp</th>
                   <th>Inicio Viaje</th>
@@ -368,6 +370,9 @@ function Transmissions() {
                     </td>
                     <td style={{ fontFamily: 'monospace' }}>
                       {record.atu_response_code || '—'}
+                    </td>
+                    <td style={{ fontSize: '0.8rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.atu_response_message || ''}>
+                      {record.atu_response_message || '—'}
                     </td>
                     <td>
                       {record.latency_ms !== null ? `${record.latency_ms}ms` : '—'}
