@@ -47,7 +47,7 @@ function Login() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="soldeoro"
+              placeholder="usuario"
               autoComplete="username"
               required
               disabled={isSubmitting}
