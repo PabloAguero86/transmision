@@ -1,13 +1,13 @@
 /**
  * Auth Routes — Hardcoded login for ATU Panel
- * Username: soldeoro, Password: soldeoro
+ * Username: etochosa, Password: etochosa
  */
 
 import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
 
-const VALID_USERNAME = 'soldeoro';
-const VALID_PASSWORD = 'soldeoro';
+const VALID_USERNAME = 'etochosa';
+const VALID_PASSWORD = 'etochosa';
 
 // Simple in-memory token store (resets on server restart)
 const activeTokens = new Set<string>();
