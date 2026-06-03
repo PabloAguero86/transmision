@@ -73,6 +73,10 @@ interface AtuConfig {
     pollIntervalMs: number;
     speedUnit: string;
   };
+  route: {
+    id: string;
+    atuRouteCode: string;
+  };
   dryRun: boolean;
   env: string;
 }

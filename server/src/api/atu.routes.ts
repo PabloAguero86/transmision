@@ -123,6 +123,10 @@ export function createAtuRoutes(options: {
           pollIntervalMs: config.gps.pollIntervalMs,
           speedUnit: config.gps.speedUnit,
         },
+        route: {
+          id: config.route.id,
+          atuRouteCode: config.route.atuRouteCode,
+        },
         dryRun: config.dryRun,
         env: config.env,
       };

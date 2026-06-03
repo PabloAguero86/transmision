@@ -115,7 +115,7 @@ async function main(): Promise<void> {
   const retryManager = new RetryManager();
 
   // Initialize repository
-  const repository = new TransmissionRepository(pool);
+  const repository = new TransmissionRepository(pool, config.route.atuRouteCode);
 
   // Initialize ATU WebSocket client
   const wsClient = createAtuWsClient({

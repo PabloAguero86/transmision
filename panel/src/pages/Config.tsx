@@ -206,6 +206,23 @@ function Config() {
         </div>
       </div>
 
+      {/* Route Configuration Section */}
+      <div className="config-section">
+        <h3 className="config-section-title">Configuración de Ruta</h3>
+
+        <div className="config-grid">
+          <div className="config-display-item readonly">
+            <span className="label">ROUTE_ID (interno)</span>
+            <span className="value">{config?.route?.id || '—'}</span>
+          </div>
+
+          <div className="config-display-item readonly">
+            <span className="label">ATU_ROUTE_CODE</span>
+            <span className="value">{config?.route?.atuRouteCode || '—'}</span>
+          </div>
+        </div>
+      </div>
+
       {/* GPS Source Section */}
       <div className="config-section">
         <h3 className="config-section-title">Fuente GPS</h3>

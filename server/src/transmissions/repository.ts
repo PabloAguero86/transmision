@@ -55,9 +55,16 @@ export interface TransmissionStats {
 
 export class TransmissionRepository {
   private pool: Pool;
+  private routeId: string;
 
-  constructor(mysqlPool: Pool) {
+  constructor(mysqlPool: Pool, routeId: string = '') {
     this.pool = mysqlPool;
+    this.routeId = routeId;
+  }
+
+  private routeFilter(): { clause: string; params: any[] } {
+    if (!this.routeId) return { clause: '', params: [] };
+    return { clause: ' AND route_id = ?', params: [this.routeId] };
   }
 
   /**
@@ -182,6 +189,7 @@ export class TransmissionRepository {
    * Get transmission statistics
    */
   async getStats(): Promise<TransmissionStats> {
+    const { clause, params } = this.routeFilter();
     const sql = `
       SELECT 
         COUNT(*) as total,
@@ -189,10 +197,11 @@ export class TransmissionRepository {
         SUM(CASE WHEN status IN ('rejected_by_atu', 'token_error') THEN 1 ELSE 0 END) as rejected,
         SUM(CASE WHEN status IN ('websocket_error', 'validation_failed', 'expired') THEN 1 ELSE 0 END) as failed
       FROM atu_transmissions
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)${clause}
     `;
 
     try {
-      const [rows] = await this.pool.execute(sql);
+      const [rows] = await this.pool.execute(sql, params);
       const result = rows as any;
       return {
         total: result[0]?.total ?? 0,
@@ -210,14 +219,17 @@ export class TransmissionRepository {
    * Get recent transmissions (for API)
    */
   async getRecent(limit: number = 100): Promise<TransmissionRecord[]> {
+    const { clause, params } = this.routeFilter();
+    const whereClause = this.routeId ? 'WHERE route_id = ?' : '';
     const sql = `
       SELECT * FROM atu_transmissions 
+      ${whereClause}
       ORDER BY created_at DESC
       LIMIT ?
     `;
 
     try {
-      const [rows] = await this.pool.query(sql, [limit]);
+      const [rows] = await this.pool.query(sql, [...params, limit]);
       return rows as unknown as TransmissionRecord[];
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -241,6 +253,10 @@ export class TransmissionRepository {
     const conditions: string[] = [];
     const params: any[] = [];
 
+    if (this.routeId) {
+      conditions.push('route_id = ?');
+      params.push(this.routeId);
+    }
     if (status) {
       conditions.push('status = ?');
       params.push(status);
@@ -282,15 +298,16 @@ export class TransmissionRepository {
    * Get transmissions by status
    */
   async getByStatus(status: TransmissionStatus, limit: number = 100): Promise<TransmissionRecord[]> {
+    const { clause, params } = this.routeFilter();
     const sql = `
       SELECT * FROM atu_transmissions 
-      WHERE status = ?
+      WHERE status = ?${clause}
       ORDER BY created_at DESC
       LIMIT ?
     `;
 
     try {
-      const [rows] = await this.pool.query(sql, [status, limit]);
+      const [rows] = await this.pool.query(sql, [status, ...params, limit]);
       return rows as unknown as TransmissionRecord[];
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -343,16 +360,18 @@ export class TransmissionRepository {
    * Get distinct vehicles (IMEI + plate) from transmissions for filter dropdown
    */
   async getDistinctVehicles(): Promise<Array<{ imei: string; plate: string }>> {
+    const { clause, params } = this.routeFilter();
+    const whereClause = this.routeId ? 'WHERE route_id = ?' : '';
     const sql = `
       SELECT imei, MAX(license_plate) as plate
       FROM atu_transmissions
-      WHERE status = 'accepted_by_atu'
+      ${whereClause}
       GROUP BY imei
       ORDER BY plate ASC
     `;
 
     try {
-      const [rows] = await this.pool.query(sql);
+      const [rows] = await this.pool.query(sql, params);
       return (rows as any[]).map((r: any) => ({
         imei: r.imei,
         plate: r.plate,
@@ -367,14 +386,16 @@ export class TransmissionRepository {
    * Get all unique IMEIs with their last transmission time
    */
   async getAllImeisWithLastTransmission(): Promise<Map<string, Date>> {
+    const { clause, params } = this.routeFilter();
     const sql = `
       SELECT imei, MAX(created_at) as last_transmission 
       FROM atu_transmissions 
+      WHERE 1=1${clause}
       GROUP BY imei
     `;
 
     try {
-      const [rows] = await this.pool.execute(sql);
+      const [rows] = await this.pool.execute(sql, params);
       const map = new Map<string, Date>();
       for (const row of rows as any[]) {
         map.set(row.imei, row.last_transmission);
@@ -390,19 +411,20 @@ export class TransmissionRepository {
    * Get transmission counts by day and status (for reports)
    */
   async getTransmissionCountsByDay(days: number = 7): Promise<Record<string, any>> {
+    const { clause, params } = this.routeFilter();
     const sql = `
       SELECT 
         DATE(created_at) as day,
         status,
         COUNT(*) as count
       FROM atu_transmissions
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)${clause}
       GROUP BY DATE(created_at), status
       ORDER BY day DESC, status
     `;
 
     try {
-      const [rows] = await this.pool.query(sql, [days]);
+      const [rows] = await this.pool.query(sql, [days, ...params]);
       return rows;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -414,6 +436,7 @@ export class TransmissionRepository {
    * Get error counts grouped by ATU response code
    */
   async getErrorCountsByCode(): Promise<Record<string, any>> {
+    const { clause, params } = this.routeFilter();
     const sql = `
       SELECT 
         atu_response_code as code,
@@ -422,13 +445,13 @@ export class TransmissionRepository {
       FROM atu_transmissions
       WHERE atu_response_code IS NOT NULL
         AND atu_response_code != '00'
-        AND status IN ('rejected_by_atu', 'token_error')
+        AND status IN ('rejected_by_atu', 'token_error')${clause}
       GROUP BY atu_response_code, atu_response_message
       ORDER BY count DESC
     `;
 
     try {
-      const [rows] = await this.pool.execute(sql);
+      const [rows] = await this.pool.execute(sql, params);
       return rows;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -441,15 +464,16 @@ export class TransmissionRepository {
    * Used to find vehicles without recent transmission
    */
   async getLastSuccessfulTransmissionByImei(): Promise<Map<string, Date>> {
+    const { clause, params } = this.routeFilter();
     const sql = `
       SELECT imei, MAX(created_at) as last_success
       FROM atu_transmissions
-      WHERE status = 'accepted_by_atu'
+      WHERE status = 'accepted_by_atu'${clause}
       GROUP BY imei
     `;
 
     try {
-      const [rows] = await this.pool.execute(sql);
+      const [rows] = await this.pool.execute(sql, params);
       const map = new Map<string, Date>();
       for (const row of rows as any[]) {
         map.set(row.imei, row.last_success);
@@ -465,14 +489,15 @@ export class TransmissionRepository {
    * Count unique IMEIs with any transmission activity within a recent window
    */
   async countActiveVehiclesWithin(seconds: number = 20): Promise<number> {
+    const { clause, params } = this.routeFilter();
     const sql = `
       SELECT COUNT(DISTINCT imei) as total
       FROM atu_transmissions
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? SECOND)${clause}
     `;
 
     try {
-      const [rows] = await this.pool.query(sql, [seconds]);
+      const [rows] = await this.pool.query(sql, [seconds, ...params]);
       return Number((rows as any[])[0]?.total ?? 0);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
