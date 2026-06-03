@@ -16,4 +16,10 @@ export interface GpsSourceAdapter {
    * Should avoid expensive business queries when possible
    */
   checkConnection?(): Promise<{ ok: boolean; message?: string }>;
+
+  /**
+   * Resolve vehicle IDs to their corresponding IMEIs
+   * Used for dashboard filtering when GPS_VEHICLE_IDS is configured
+   */
+  resolveVehicleImeis?(vehicleIds: string[]): Promise<string[]>;
 }

@@ -37,6 +37,11 @@ export class MySqlGpsAdapter implements GpsSourceAdapter {
   async getLatestPositions(): Promise<GpsRawRow[]> {
     const ROUTE_ID = config.route.id;
     const ATU_ROUTE_CODE = config.route.atuRouteCode;
+    const vehicleIds = config.gps.vehicleIds;
+
+    const vehicleFilter = vehicleIds.length > 0
+      ? ` AND vh.idvehiculo IN (${vehicleIds.map(id => `'${id}'`).join(',')})`
+      : '';
 
     const query = `
 SELECT
@@ -60,7 +65,7 @@ WHERE vh.idgps = tlp.uniqueid
   AND vj.f_viaje = DATE(NOW())
   AND vj.idruta = '${ROUTE_ID}'
   AND pr.idpersona = op.idpersona
-  AND op.idoperador = vj.idconductor
+  AND op.idoperador = vj.idconductor${vehicleFilter}
     `;
 
     let connection: PoolConnection | null = null;
@@ -114,6 +119,37 @@ WHERE vh.idgps = tlp.uniqueid
       };
     } finally {
       connection?.release();
+    }
+  }
+
+  /**
+   * Resolve vehicle IDs to their corresponding IMEIs
+   */
+  async resolveVehicleImeis(vehicleIds: string[]): Promise<string[]> {
+    if (vehicleIds.length === 0) return [];
+
+    const placeholders = vehicleIds.map(() => '?').join(',');
+    const sql = `
+      SELECT DISTINCT idgps AS imei
+      FROM tblvehiculo
+      WHERE idvehiculo IN (${placeholders})
+        AND ac_estado = 1
+        AND eliminado = 1
+    `;
+
+    let connection: PoolConnection | null = null;
+
+    try {
+      connection = await this.pool.getConnection();
+      const [rows] = await connection.execute<RowDataPacket[]>(sql, vehicleIds);
+      return rows.map(row => String(row.imei ?? ''));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to resolve vehicle IMEIs: ${message}`);
+    } finally {
+      if (connection) {
+        connection.release();
+      }
     }
   }
 
