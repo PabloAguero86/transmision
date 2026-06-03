@@ -5,9 +5,10 @@
 
 import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
+import { config } from '../config/env';
 
-const VALID_USERNAME = 'etochosa';
-const VALID_PASSWORD = 'etochosa';
+const VALID_USERNAME = config.auth.username;
+const VALID_PASSWORD = config.auth.password;
 
 // Simple in-memory token store (resets on server restart)
 const activeTokens = new Set<string>();

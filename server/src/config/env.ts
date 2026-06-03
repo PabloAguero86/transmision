@@ -35,6 +35,10 @@ interface AtuConfig {
     port: number;
   };
   dryRun: boolean;
+  auth: {
+    username: string;
+    password: string;
+  };
 }
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
@@ -88,6 +92,10 @@ const config: AtuConfig = {
     port: parseIntOrDefault(process.env.APP_PORT, 3000),
   },
   dryRun: parseBoolean(process.env.ATU_DRY_RUN, false),
+  auth: {
+    username: process.env.AUTH_USERNAME || 'etochosa',
+    password: process.env.AUTH_PASSWORD || 'etochosa',
+  },
 };
 
 // Validate required fields
