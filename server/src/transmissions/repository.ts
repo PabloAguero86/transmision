@@ -463,17 +463,18 @@ export class TransmissionRepository {
    * Get IMEIs with their latest successful transmission timestamp
    * Used to find vehicles without recent transmission
    */
-  async getLastSuccessfulTransmissionByImei(): Promise<Map<string, Date>> {
+  async getLastSuccessfulTransmissionByImei(maxAgeHours: number = 24): Promise<Map<string, Date>> {
     const { clause, params } = this.routeFilter();
     const sql = `
       SELECT imei, MAX(created_at) as last_success
       FROM atu_transmissions
       WHERE status = 'accepted_by_atu'${clause}
+        AND created_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
       GROUP BY imei
     `;
 
     try {
-      const [rows] = await this.pool.execute(sql, params);
+      const [rows] = await this.pool.execute(sql, [...params, maxAgeHours]);
       const map = new Map<string, Date>();
       for (const row of rows as any[]) {
         map.set(row.imei, row.last_success);
