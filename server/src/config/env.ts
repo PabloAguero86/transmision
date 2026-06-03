@@ -38,6 +38,8 @@ interface AtuConfig {
   auth: {
     username: string;
     password: string;
+    brand: string;
+    company: string;
   };
 }
 
@@ -95,6 +97,8 @@ const config: AtuConfig = {
   auth: {
     username: process.env.AUTH_USERNAME || 'etochosa',
     password: process.env.AUTH_PASSWORD || 'etochosa',
+    brand: process.env.AUTH_BRAND || 'ATU Retransmisor GPS',
+    company: process.env.AUTH_COMPANY || '',
   },
 };
 

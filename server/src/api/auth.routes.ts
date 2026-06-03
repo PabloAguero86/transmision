@@ -1,8 +1,3 @@
-/**
- * Auth Routes — Hardcoded login for ATU Panel
- * Username: etochosa, Password: etochosa
- */
-
 import { Router, Request, Response } from 'express';
 import { nanoid } from 'nanoid';
 import { config } from '../config/env';
@@ -10,11 +5,17 @@ import { config } from '../config/env';
 const VALID_USERNAME = config.auth.username;
 const VALID_PASSWORD = config.auth.password;
 
-// Simple in-memory token store (resets on server restart)
 const activeTokens = new Set<string>();
 
 export function createAuthRoutes(): Router {
   const router = Router();
+
+  router.get('/brand', (_req: Request, res: Response) => {
+    res.json({
+      brand: config.auth.brand,
+      company: config.auth.company,
+    });
+  });
 
   router.post('/login', (req: Request, res: Response) => {
     const { username, password } = req.body;
@@ -37,7 +38,7 @@ export function createAuthRoutes(): Router {
     res.json({
       success: true,
       token,
-      user: { username },
+      user: { username, brand: config.auth.brand, company: config.auth.company },
     });
   });
 
@@ -63,7 +64,7 @@ export function createAuthRoutes(): Router {
       return;
     }
 
-    res.json({ valid: true, user: { username: VALID_USERNAME } });
+    res.json({ valid: true, user: { username: VALID_USERNAME, brand: config.auth.brand, company: config.auth.company } });
   });
 
   return router;

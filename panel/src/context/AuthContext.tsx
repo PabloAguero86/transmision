@@ -6,6 +6,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 interface AuthUser {
   username: string;
+  brand?: string;
+  company?: string;
 }
 
 interface AuthContextType {

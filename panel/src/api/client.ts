@@ -5,6 +5,11 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+interface BrandInfo {
+  brand: string;
+  company: string;
+}
+
 interface AtuStatus {
   transmissionActive: boolean;
   mode: 'testing' | 'production';
@@ -158,6 +163,9 @@ async function post<T>(path: string, body?: object): Promise<T> {
 
 // ATU Status & Control
 export const api = {
+  // GET /auth/brand
+  getBrand: () => get<BrandInfo>('/auth/brand'),
+
   // GET /atu/status
   getStatus: () => get<AtuStatus>('/atu/status'),
 
@@ -308,4 +316,5 @@ export type {
   VehicleWithoutTransmission,
   ReportSummary,
   AtuErrorReport,
+  BrandInfo,
 };
