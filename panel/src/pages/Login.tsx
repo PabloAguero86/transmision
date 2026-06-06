@@ -1,16 +1,40 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 
+const loginSchema = z.object({
+  username: z
+    .string()
+    .min(1, 'Ingresa tu usuario')
+    .max(50, 'Usuario demasiado largo'),
+  password: z
+    .string()
+    .min(1, 'Ingresa tu contraseña')
+    .max(100, 'Contraseña demasiado larga'),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
 function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const [brand, setBrand] = useState({ brand: 'ATU Retransmisor GPS', company: '' });
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isValid },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onBlur',
+  });
 
   useEffect(() => {
     api.getBrand().then(data => {
@@ -18,18 +42,19 @@ function Login() {
     }).catch(() => {});
   }, []);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsSubmitting(true);
+  const detectCapsLock = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (typeof e.getModifierState === 'function') {
+      setCapsLockOn(e.getModifierState('CapsLock'));
+    }
+  };
 
+  const onSubmit = async (data: LoginFormData) => {
+    setSubmitError('');
     try {
-      await login(username, password);
+      await login(data.username, data.password);
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setIsSubmitting(false);
+      setSubmitError(err instanceof Error ? err.message : 'Login failed');
     }
   };
 
@@ -50,41 +75,85 @@ function Login() {
           {!brand.company && <p className="login-subtitle">Panel de Administracion</p>}
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          {error && <div className="login-error">{error}</div>}
+        <form onSubmit={handleSubmit(onSubmit)} className="login-form" noValidate>
+          {submitError && (
+            <div className="login-error" role="alert">
+              {submitError}
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="username">Usuario</label>
             <input
               id="username"
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
               placeholder="usuario"
               autoComplete="username"
-              required
+              autoFocus
+              aria-invalid={!!errors.username}
+              aria-describedby={errors.username ? 'username-error' : undefined}
               disabled={isSubmitting}
+              {...register('username')}
             />
+            {errors.username && (
+              <span id="username-error" className="field-error" role="alert">
+                {errors.username.message}
+              </span>
+            )}
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Contrasena</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="........"
-              autoComplete="current-password"
-              required
-              disabled={isSubmitting}
-            />
+            <div className="password-field">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="........"
+                autoComplete="current-password"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'password-error' : undefined}
+                disabled={isSubmitting}
+                onKeyDown={detectCapsLock}
+                onKeyUp={detectCapsLock}
+                {...register('password')}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                tabIndex={-1}
+                disabled={isSubmitting}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+            {errors.password && (
+              <span id="password-error" className="field-error" role="alert">
+                {errors.password.message}
+              </span>
+            )}
+            {capsLockOn && (
+              <span className="field-warning" role="status">
+                Bloq Mayus activado
+              </span>
+            )}
           </div>
 
           <button
             type="submit"
             className="login-btn"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isValid}
           >
             {isSubmitting ? (
               <>
