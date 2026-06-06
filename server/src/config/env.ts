@@ -19,7 +19,6 @@ interface AtuConfig {
     sourceType: 'database';
     pollIntervalMs: number;
     speedUnit: 'km/h' | 'knots';
-    vehicleIds: string[];
   };
   mysql: {
     host: string;
@@ -79,7 +78,6 @@ const config: AtuConfig = {
     sourceType: (process.env.GPS_SOURCE_TYPE as 'database') || 'database',
     pollIntervalMs: parseIntOrDefault(process.env.GPS_SOURCE_POLL_INTERVAL_MS, 10000),
     speedUnit: (process.env.GPS_SPEED_UNIT as 'km/h' | 'knots') || 'km/h',
-    vehicleIds: process.env.GPS_VEHICLE_IDS ? process.env.GPS_VEHICLE_IDS.split(',').map(s => s.trim()).filter(Boolean) : [],
   },
   mysql: {
     host: process.env.MYSQL_HOST || '',

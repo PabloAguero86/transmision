@@ -18,8 +18,8 @@ export interface GpsSourceAdapter {
   checkConnection?(): Promise<{ ok: boolean; message?: string }>;
 
   /**
-   * Resolve vehicle IDs to their corresponding IMEIs
-   * Used for dashboard filtering when GPS_VEHICLE_IDS is configured
+   * Resolve the set of active IMEIs that should be shown in the dashboard.
+   * Implementations should mirror the same filter applied by getLatestPositions.
    */
-  resolveVehicleImeis?(vehicleIds: string[]): Promise<string[]>;
+  resolveVehicleImeis?(): Promise<string[]>;
 }

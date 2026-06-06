@@ -110,12 +110,12 @@ async function main(): Promise<void> {
   const gpsAdapter: GpsSourceAdapter = new MySqlGpsAdapter(pool);
   console.log('[Server] GPS adapter initialized');
 
-  // Resolve vehicle IMEIs if GPS_VEHICLE_IDS is configured
+  // Resolve active vehicle IMEIs (route-based, excludes blacklisted vehicles)
   let vehicleImeis: string[] = [];
-  if (config.gps.vehicleIds.length > 0 && gpsAdapter.resolveVehicleImeis) {
+  if (gpsAdapter.resolveVehicleImeis) {
     try {
-      vehicleImeis = await gpsAdapter.resolveVehicleImeis(config.gps.vehicleIds);
-      console.log(`[Server] Resolved ${vehicleImeis.length} IMEIs for ${config.gps.vehicleIds.length} vehicle IDs`);
+      vehicleImeis = await gpsAdapter.resolveVehicleImeis();
+      console.log(`[Server] Resolved ${vehicleImeis.length} active IMEIs for route ${config.route.id}`);
     } catch (err) {
       console.warn('[Server] WARNING: Could not resolve vehicle IMEIs - dashboard will not filter by vehicle');
     }

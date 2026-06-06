@@ -8,6 +8,20 @@ import { config } from '../../config/env';
 import { GpsSourceAdapter } from './gps-source.adapter';
 import { GpsRawRow } from '../dto/gps-raw-row.dto';
 
+const EXCLUDED_VEHICLE_IDS = [
+  '000164',
+  '000220',
+  '000227',
+  '000218',
+  '000239',
+  '000159',
+  '000237',
+  '000224',
+] as const;
+
+const buildExclusionClause = (alias: string): string =>
+  EXCLUDED_VEHICLE_IDS.map(id => `${alias}.idvehiculo<>'${id}'`).join(' and ');
+
 export class MySqlGpsAdapter implements GpsSourceAdapter {
   private pool: Pool;
 
@@ -37,35 +51,35 @@ export class MySqlGpsAdapter implements GpsSourceAdapter {
   async getLatestPositions(): Promise<GpsRawRow[]> {
     const ROUTE_ID = config.route.id;
     const ATU_ROUTE_CODE = config.route.atuRouteCode;
-    const vehicleIds = config.gps.vehicleIds;
-
-    const vehicleFilter = vehicleIds.length > 0
-      ? ` AND vh.idvehiculo IN (${vehicleIds.map(id => `'${id}'`).join(',')})`
-      : '';
 
     const query = `
-SELECT
-    tlp.uniqueid AS imei,
-    tlp.latitude AS latitude,
-    tlp.longitude AS longitude,
-    '${ATU_ROUTE_CODE}' AS route_id,
-    TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00.000000', CONVERT_TZ(tlp.servertime, '-05:00', '+00:00')) DIV 1000 AS ts,
-    vh.placa AS license_plate,
-    tlp.speed AS speed,
-    IF(vh.ac_sentido = 'A', 0, 1) AS direction_id,
-    pr.n_documento AS driver_id,
-    TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00.000000', CONVERT_TZ(TIMESTAMP(vj.f_viaje, TIME(vj.h_salida)), '-05:00', '+00:00')) DIV 1000 AS tsinitialtrip
+SELECT tlp.uniqueid AS imei,tlp.latitude AS latitude,tlp.longitude AS longitude,'${ATU_ROUTE_CODE}' AS route_id,
+
+    TIMESTAMPDIFF(
+        MICROSECOND,
+        '1970-01-01 00:00:00.000000',
+        CONVERT_TZ(tlp.servertime, '-05:00', '+00:00')
+    ) DIV 1000 AS ts,
+
+vh.placa AS license_plate,tlp.speed AS speed ,IF(vh.ac_sentido = 'A', 0, 1) AS direction_id,pr.n_documento AS driver_id,
+
+    TIMESTAMPDIFF(
+        MICROSECOND,
+        '1970-01-01 00:00:00.000000',
+        CONVERT_TZ(
+            TIMESTAMP(vj.f_viaje, TIME(vj.h_salida)),
+            '-05:00',
+            '+00:00'
+        )
+    ) DIV 1000 AS tsinitialtrip
+
 FROM tc_last_positions tlp, tblvehiculo vh, tblviaje vj, tbloperador op, tblpersona pr
-WHERE vh.idgps = tlp.uniqueid
-  AND vh.idruta = '${ROUTE_ID}'
-  AND vj.idviaje = vh.uv_idviaje
-  AND vh.ac_estado = 1
-  AND vh.eliminado = 1
-  AND vh.estado = 1
-  AND vj.f_viaje = DATE(NOW())
-  AND vj.idruta = '${ROUTE_ID}'
-  AND pr.idpersona = op.idpersona
-  AND op.idoperador = vj.idconductor${vehicleFilter}
+WHERE vh.idgps=tlp.uniqueid AND vh.idruta='${ROUTE_ID}' AND vj.idviaje=vh.uv_idviaje AND vh.ac_estado=1 AND vh.eliminado=1 AND vh.estado=1 AND
+vj.f_viaje= DATE( NOW()) and vj.idruta='${ROUTE_ID}' and
+pr.idpersona=op.idpersona AND op.idoperador=vj.idconductor AND
+(
+	${buildExclusionClause('vh')}
+)
     `;
 
     let connection: PoolConnection | null = null;
@@ -123,25 +137,28 @@ WHERE vh.idgps = tlp.uniqueid
   }
 
   /**
-   * Resolve vehicle IDs to their corresponding IMEIs
+   * Resolve active IMEIs for the configured route, excluding blacklisted vehicles.
+   * Used by the dashboard to mirror the transmission filter.
    */
-  async resolveVehicleImeis(vehicleIds: string[]): Promise<string[]> {
-    if (vehicleIds.length === 0) return [];
-
-    const placeholders = vehicleIds.map(() => '?').join(',');
+  async resolveVehicleImeis(): Promise<string[]> {
+    const ROUTE_ID = config.route.id;
     const sql = `
       SELECT DISTINCT idgps AS imei
       FROM tblvehiculo
-      WHERE idvehiculo IN (${placeholders})
+      WHERE idruta = '${ROUTE_ID}'
         AND ac_estado = 1
         AND eliminado = 1
+        AND estado = 1
+        AND (
+          ${buildExclusionClause('tblvehiculo')}
+        )
     `;
 
     let connection: PoolConnection | null = null;
 
     try {
       connection = await this.pool.getConnection();
-      const [rows] = await connection.execute<RowDataPacket[]>(sql, vehicleIds);
+      const [rows] = await connection.execute<RowDataPacket[]>(sql);
       return rows.map(row => String(row.imei ?? ''));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
